@@ -1,1 +1,144 @@
+--// Ball Folder Module \\--
 
+--[[
+
+Antora is Arise Blade Ball from 10 Months Ago...
+
+]]--
+
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local Stats = game:GetService("Stats")
+local Network = Stats.Network.ServerStatsItem
+
+local Player = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local LastInput = UserInputService:GetLastInputType()
+local Vector2MouseLocation = nil
+
+local Arise = {}
+
+Arise.Data = {
+    Player = {
+        character = nil,
+        humanoidrootpart = nil,
+        position = nil,
+        velocity = 0,
+        speed = 0,
+        ping = 0
+    },
+    Ball = {
+        target = nil,
+        from = nil,
+        ball = nil,
+        position = nil,
+        velocity = 0,
+        speed = 0,
+        direction = 0,
+        dot = 0,
+        radians = 0,
+        angle = 0,
+        distance = 0
+    },
+    Target = {
+        target = nil,
+        humanoidrootpart = nil,
+        position = nil,
+        velocity = 0,
+        speed = 0,
+        distance = 0
+    }
+}
+
+function Arise:GetBall()
+    for _, Ball in ipairs(Workspace.Balls:GetChildren()) do
+        if Ball:GetAttribute("realBall") then
+            return Ball
+        end
+    end
+    return nil
+end
+
+function Arise:GetTarget()
+    local Target, MaxDistance = nil, math.huge
+    local Character = Player.Character
+    if not Character or not Character:FindFirstChild("HumanoidRootPart") then return nil end
+    local HumanoidRootPart = Character.HumanoidRootPart
+
+    for _, Entity in ipairs(Workspace.Alive:GetChildren()) do
+        if Entity.Name ~= Player.Name and Entity:IsA("Model") then
+            local RootPart = Entity:FindFirstChild("HumanoidRootPart")
+            local Humanoid = Entity:FindFirstChildOfClass("Humanoid")
+            if RootPart and Humanoid and Humanoid.Health > 0 then
+                local Distance = (HumanoidRootPart.Position - RootPart.Position).Magnitude
+                if Distance < MaxDistance then
+                    MaxDistance = Distance
+                    Target = Entity
+                end
+            end
+        end
+    end
+
+    return Target, MaxDistance
+end
+
+function Arise:BallData()
+    local Ball = Arise:GetBall()
+    if not Ball or not Player.Character or not Player.Character.HumanoidRootPart then return nil end
+
+    Arise.Data.Ball.target = Ball:GetAttribute("target")
+    Arise.Data.Ball.from = Ball:GetAttribute("from")
+    Arise.Data.Ball.ball = Ball
+    Arise.Data.Ball.position = Ball.Position
+    Arise.Data.Ball.velocity = Ball:FindFirstChild("zoomies").VectorVelocity
+    Arise.Data.Ball.speed = Arise.Data.Ball.velocity.Magnitude
+    Arise.Data.Ball.direction = (Player.Character.HumanoidRootPart.Position - Arise.Data.Ball.position).Unit
+    Arise.Data.Ball.dot = math.clamp(Arise.Data.Ball.direction:Dot(Arise.Data.Ball.velocity.Unit), -1, 1)
+    Arise.Data.Ball.radians = math.acos(Arise.Data.Ball.dot)
+    Arise.Data.Ball.angle = math.deg(Arise.Data.Ball.radians)
+    Arise.Data.Ball.distance = (Player.Character.HumanoidRootPart.Position - Ball.Position).Magnitude
+
+    return unpack({
+        Arise.Data.Ball.ball, Arise.Data.Ball.target, Arise.Data.Ball.from, Arise.Data.Ball.position,
+        Arise.Data.Ball.velocity, Arise.Data.Ball.speed, Arise.Data.Ball.direction, Arise.Data.Ball.dot,
+        Arise.Data.Ball.radians, Arise.Data.Ball.angle, Arise.Data.Ball.distance
+    })
+end
+
+function Arise:TargetData()
+    local Target, Distance = Arise:GetTarget()
+    if not Target or not Distance then return nil end
+
+    Arise.Data.Target.target = Target
+    Arise.Data.Target.humanoidrootpart = Target.HumanoidRootPart
+    Arise.Data.Target.position = Arise.Data.Target.humanoidrootpart.Position
+    Arise.Data.Target.velocity = Arise.Data.Target.humanoidrootpart.Velocity
+    Arise.Data.Target.speed = Arise.Data.Target.velocity.Magnitude
+    Arise.Data.Target.distance = Distance
+
+    return unpack({
+        Arise.Data.Target.target, Arise.Data.Target.humanoidrootpart, Arise.Data.Target.position,
+        Arise.Data.Target.velocity, Arise.Data.Target.speed, Arise.Data.Target.distance
+    })
+end
+
+function Arise:PlayerData()
+    Arise.Data.Player.character = Player.Character
+    if not Arise.Data.Player.character then return nil end
+
+    Arise.Data.Player.humanoidrootpart = Arise.Data.Player.character:FindFirstChild("HumanoidRootPart")
+    if not Arise.Data.Player.humanoidrootpart then return nil end
+
+    Arise.Data.Player.position = Arise.Data.Player.humanoidrootpart.Position
+    Arise.Data.Player.velocity = Arise.Data.Player.humanoidrootpart.Velocity
+    Arise.Data.Player.speed = Arise.Data.Player.velocity.Magnitude
+    Arise.Data.Player.ping = math.ceil(Network["Data Ping"]:GetValue())
+
+    return unpack({
+        Arise.Data.Player.character, Arise.Data.Player.humanoidrootpart, Arise.Data.Player.position,
+        Arise.Data.Player.velocity, Arise.Data.Player.speed, Arise.Data.Player.ping
+    })
+end
+
+return Arise
